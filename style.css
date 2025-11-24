@@ -1,0 +1,46 @@
+/* style.css - Sporty racing theme (red/black) */
+:root{
+  --bg:#0b0b0b;
+  --card:#121212;
+  --accent:#e63946;
+  --muted:#9a9a9a;
+  --glass: rgba(255,255,255,0.04);
+  --radius:12px;
+  --pad:16px;
+  --font: 'Segoe UI', Roboto, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background: linear-gradient(180deg,#060606 0%, #0f0f0f 100%);
+  color:#eee;
+  font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  padding:28px;
+}
+.container{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+.header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#ff7b7b);display:flex;align-items:center;justify-content:center;font-weight:700;color:#111}
+h1{margin:0;font-size:20px}
+.card{background:var(--card);padding:var(--pad);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.03)}
+.timer{font-family:monospace;font-size:44px;text-align:center;padding:18px 12px;border-radius:8px;background:linear-gradient(90deg, rgba(230,57,70,0.08), transparent);margin-bottom:12px}
+.controls{display:flex;gap:8px;justify-content:center}
+.btn{background:var(--accent);border:none;color:#111;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;box-shadow:0 6px 14px rgba(230,57,70,0.12)}
+.btn.secondary{background:#222;color:#eee;border:1px solid rgba(255,255,255,0.04)}
+.btn.danger{background:#ff4d4d;color:#111}
+.form-row{display:flex;gap:8px;margin-bottom:8px}
+.input, .select{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:8px;color:inherit;flex:1}
+.list{max-height:420px;overflow:auto;margin-top:8px}
+.driver{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);margin-bottom:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+.driver .meta{display:flex;gap:12px;align-items:center}
+.small{font-size:12px;color:var(--muted)}
+.right{display:flex;gap:8px;align-items:center}
+.footer{grid-column:1/-1;margin-top:12px;color:var(--muted);font-size:13px;text-align:center}
+.center{display:flex;align-items:center;justify-content:center;min-height:60vh}
+.login-card{width:420px}
+@media(max-width:900px){
+  .container{grid-template-columns:1fr; padding:16px}
+  .logo{display:none}
+}
