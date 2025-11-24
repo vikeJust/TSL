@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Race Timer — Admin</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <script>
+    // Protect route: require session role 'admin'
+    const role = sessionStorage.getItem('race_role');
+    if(role !== 'admin'){ window.location.href = '/login.html'; }
+  </script>
+
+  <div class="container">
+    <div class="header">
+      <div class="brand">
+        <div class="logo">RT</div>
+        <div>
+          <h1>Race Timer — Admin</h1>
+        </div>
+      </div>
+    </div>
+    <main>
+      <div class="card">
+        <div id="timerDisplay" class="timer">00:00:00</div>
+        <div class="controls">
+          <button id="startBtn" class="btn">Start</button>
+          <button id="stopBtn" class="btn secondary">Stop</button>
+          <button id="resetBtn" class="btn danger">Reset</button>
+        </div>
+      </div>
+
+      <div style="height:16px"></div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Driver Management</h3>
+        <div class="form-row">
+          <input id="driverName" class="input" placeholder="Driver name" />
+          <input id="driverCar" class="input" placeholder="Team" />
+        </div>
+        <div class="form-row">
+          <input id="driverTeam" class="input" placeholder="Time" />
+          <button id="addDriverBtn" class="btn">Add Driver</button>
+        </div>
+
+        <div class="list" id="driverList"></div>
+      </div>
+    </main>
+
+    <aside>
+      <div class="card">
+        <h4 style="margin-top:0">Live Preview</h4>
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="card">
+        <h4 style="margin-top:0">Quick Actions</h4>
+        <div style="height:8px"></div>
+        <button id="clearDriversBtn" class="btn danger">Clear all drivers</button>
+        <div style="height:8px"></div>
+        <button id="logoutBtn" class="btn secondary">Logout</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Firebase + script included -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAvVSDOYfvkC9_yYC0YAxbSWc_te1WAR6M",
+      authDomain: "timersite-ca1fd.firebaseapp.com",
+      projectId: "timersite-ca1fd",
+      storageBucket: "timersite-ca1fd.firebasestorage.app",
+      messagingSenderId: "635948048016",
+      appId: "1:635948048016:web:3dcfa7caa264936aad8215",
+      measurementId: "G-GRB0GCJDQP"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
