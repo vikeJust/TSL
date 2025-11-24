@@ -182,3 +182,24 @@ if(isAdminUI()){
 function escapeHtml(s){
   return String(s || '').replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
 }
+// Clear ALL drivers
+const clearDriversBtn = document.getElementById("clearDriversBtn");
+if (clearDriversBtn) {
+  clearDriversBtn.addEventListener("click", () => {
+    if (confirm("Delete ALL drivers?")) {
+      driversRef.remove();
+    }
+  });
+}
+
+/* ============================================================
+   LOGOUT
+============================================================ */
+
+const logoutBtn = document.getElementById("logoutBtn");
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", () => {
+    sessionStorage.clear();
+    window.location.href = "login.html";
+  });
+}
