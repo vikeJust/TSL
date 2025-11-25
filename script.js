@@ -1,205 +1,253 @@
-// script.js - shared by admin.html and index.html
-// Assumes firebase (compat) is loaded and 'db' is available globally from firebase.database()
+// ============================================================
+//  GLOBAL SETUP
+// ============================================================
 
-// Utility: format milliseconds to HH:MM:SS
-function formatMS(ms){
-  const m = Math.floor(ms / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const msPart = Math.floor(ms % 100);
+// Timer display + UI references
+const timerDisplay = document.getElementById("timerDisplay");
+const driverListEl = document.getElementById("driverList");
+const statusEl = document.getElementById("status");
 
-  return (
-    String(m).padStart(2, '0') + ":" +
-    String(s).padStart(2, '0') + ":" +
-    String(msPart).padStart(2, '0')
-  );
-}
-const timerDisplay = document.getElementById('timerDisplay');
-const driverListEl = document.getElementById('driverList');
-const dbStateEl = document.getElementById('dbState');
-const statusEl = document.getElementById('status');
+// Firebase DB references
+const timerRef = db.ref("timer");
+const driversRef = db.ref("drivers");
 
+// Local timer update interval
 let localInterval = null;
 
-// Database refs
-const timerRef = db.ref('timer');
-const driversRef = db.ref('drivers');
 
-// Timer listener
-timerRef.on('value', snapshot => {
-  const data = snapshot.val() || { running:false, startTime:0, elapsed:0 };
-  if(statusEl) statusEl.innerText = data.running ? 'Running' : 'Stopped';
-  if(data.running){
-    if(localInterval) clearInterval(localInterval);
-    localInterval = setInterval(()=>{
-      const now = Date.now();
-      const diff = (data.elapsed || 0) + (now - (data.startTime || now));
-      if(timerDisplay) timerDisplay.innerText = formatMS(diff);
-    }, 1);
-  } else {
-    if(localInterval){ clearInterval(localInterval); localInterval = null; }
-    if(timerDisplay) timerDisplay.innerText = formatMS(data.elapsed || 0);
-  }
-  if(dbStateEl) dbStateEl.innerText = JSON.stringify(data, null, 2);
-}, err => {
-  if(statusEl) statusEl.innerText = 'Error';
-  console.error('Timer listener error', err);
-});
+// ============================================================
+//  TIME FORMAT: MM:SS:MS
+// ============================================================
 
-// Drivers listener
-driversRef.on('value', snapshot => {
-  const data = snapshot.val() || {};
-  renderDriverList(data);
-}, err => console.error('Drivers listener error', err));
+function formatMS(ms) {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const msPart = Math.floor(ms % 1000);
+  
+  return (
+    String(m).padStart(2, "0") + ":" +
+    String(s).padStart(2, "0") + ":" +
+    String(msPart).padStart(3, "0")
+  );
+}
 
-function renderDriverList(drivers){
-  if(!driverListEl) return;
-  driverListEl.innerHTML = '';
+
+// ============================================================
+//  REALTIME TIMER LISTENER (Admin + Viewer)
+// ============================================================
+
+timerRef.on(
+  "value",
+  snapshot => {
+    const data = snapshot.val() || {
+      running: false,
+      startTime: 0,
+      elapsed: 0
+    };
+
+    if (statusEl) statusEl.innerText = data.running ? "Running" : "Stopped";
+
+    if (data.running) {
+      if (localInterval) clearInterval(localInterval);
+
+      localInterval = setInterval(() => {
+        db.ref(".info/serverTimeOffset").once("value").then(offSnap => {
+          const offset = offSnap.val() || 0;
+          const serverNow = Date.now() + offset;
+
+          const diff = data.elapsed + (serverNow - data.startTime);
+          if (timerDisplay) timerDisplay.innerText = formatMS(diff);
+        });
+      }, 20);
+    } else {
+      if (localInterval) {
+        clearInterval(localInterval);
+        localInterval = null;
+      }
+
+      if (timerDisplay) timerDisplay.innerText = formatMS(data.elapsed || 0);
+    }
+  },
+  err => console.error("Timer listener error:", err)
+);
+
+
+// ============================================================
+//  DRIVER LISTENER (Admin + Viewer)
+// ============================================================
+
+driversRef.on(
+  "value",
+  snapshot => {
+    const data = snapshot.val() || {};
+    renderDriverList(data);
+  },
+  err => console.error("Drivers listener error:", err)
+);
+
+function renderDriverList(drivers) {
+  if (!driverListEl) return;
+
+  driverListEl.innerHTML = "";
+
   const keys = Object.keys(drivers);
-  if(keys.length === 0){
-    driverListEl.innerHTML = '<div class="small">No drivers yet</div>';
+  if (keys.length === 0) {
+    driverListEl.innerHTML = `<div class="small">No drivers yet</div>`;
     return;
   }
-  keys.sort();
-  keys.forEach(key=>{
+
+  keys.forEach(key => {
     const d = drivers[key];
-    const el = document.createElement('div');
-    el.className = 'driver';
-    el.innerHTML = `
+
+    const row = document.createElement("div");
+    row.className = "driver";
+
+    row.innerHTML = `
       <div class="meta">
         <div>
-          <div style="font-weight:700">${escapeHtml(d.name || 'Unnamed')}</div>
-          <div class="small">${escapeHtml(d.team || '')} • ${escapeHtml(d.car || '')}</div>
+          <div style="font-weight:700">${escapeHtml(d.name)}</div>
+          <div class="small">Car ${escapeHtml(d.car)} • ${escapeHtml(d.team)}</div>
         </div>
       </div>
       <div class="right">
-        ${isAdminUI() ? `<button class="btn secondary" data-id="${key}" data-action="del">Delete</button>` : ''}
+        ${isAdminUI() ? `<button class="btn danger" data-id="${key}" data-del>Delete</button>` : ""}
       </div>
     `;
-    driverListEl.appendChild(el);
+
+    driverListEl.appendChild(row);
   });
 
-  if(isAdminUI()){
-    const dels = driverListEl.querySelectorAll('button[data-action="del"]');
-    dels.forEach(b=>{
-      b.addEventListener('click', e=>{
-        const id = b.getAttribute('data-id');
-        if(confirm('Delete this driver?')) driversRef.child(id).remove();
-      });
+  // Delete buttons appear only in admin mode
+  if (isAdminUI()) {
+    driverListEl.querySelectorAll("[data-del]").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-id");
+        if (confirm("Delete this driver?")) {
+          driversRef.child(id).remove();
+        }
+      };
     });
   }
 }
 
-function isAdminUI(){
-  return !!document.getElementById('addDriverBtn');
+
+// ============================================================
+//  HELPER
+// ============================================================
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, m => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]
+  ));
 }
 
-// Admin bindings
-if(isAdminUI()){
- document.getElementById('startBtn').addEventListener('click', () => {
-  let countdown = 5;
+function isAdminUI() {
+  return document.getElementById("addDriverBtn") !== null;
+}
 
-  // Show countdown on timer
-  if (timerDisplay) timerDisplay.innerText = `Starting in ${countdown}...`;
 
-  const countdownInterval = setInterval(() => {
-    countdown--;
-    if (countdown > 0) {
-      timerDisplay.innerText = `Starting in ${countdown}...`;
-    } else {
-      clearInterval(countdownInterval);
+// ============================================================
+//  ADMIN CONTROLS (RUN ONLY ON admin.html)
+// ============================================================
 
-      // Start real timer only after countdown finishes
-      timerRef.once("value").then(snap => {
-        const data = snap.val() || { elapsed: 0 };
-        timerRef.set({
-          running: true,
-          startTime: Date.now(),
-          elapsed: data.elapsed || 0
+if (isAdminUI()) {
+
+  // Start (with countdown)
+  document.getElementById("startBtn").onclick = () => {
+    let countdown = 5;
+    timerDisplay.innerText = `Starting in ${countdown}...`;
+
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdown > 0) {
+        timerDisplay.innerText = `Starting in ${countdown}...`;
+      } else {
+        clearInterval(countdownInterval);
+
+        timerRef.once("value").then(snap => {
+          const data = snap.val() || { elapsed: 0 };
+
+          timerRef.set({
+            running: true,
+            startTime: firebase.database.ServerValue.TIMESTAMP,
+            elapsed: data.elapsed
+          });
         });
+      }
+    }, 1000);
+  };
+
+  // Stop
+  document.getElementById("stopBtn").onclick = () => {
+    timerRef.once("value").then(snap => {
+      const data = snap.val();
+      if (!data) return;
+
+      const stopTime = Date.now();
+      const newElapsed = data.elapsed + (stopTime - data.startTime);
+
+      timerRef.set({
+        running: false,
+        startTime: 0,
+        elapsed: newElapsed
+      });
+    });
+  };
+
+  // Reset
+  document.getElementById("resetBtn").onclick = () => {
+    if (confirm("Reset timer?")) {
+      timerRef.set({
+        running: false,
+        startTime: 0,
+        elapsed: 0
       });
     }
-  }, 1000);
-});
-  document.getElementById('stopBtn').addEventListener('click', ()=>{
-    timerRef.once('value').then(snap=>{
-      const data = snap.val();
-      if(!data) return;
-      const newElapsed = (data.elapsed || 0) + (Date.now() - (data.startTime || Date.now()));
-      timerRef.set({ running:false, startTime:0, elapsed: newElapsed });
-    });
-  });
-
-  document.getElementById('resetBtn').addEventListener('click', ()=>{
-    if(!confirm('Reset timer to 00:00:00?')) return;
-    timerRef.set({ running:false, startTime:0, elapsed:0 });
-  });
+  };
 
   // Add driver
-  document.getElementById('addDriverBtn').addEventListener('click', ()=>{
-    const name = document.getElementById('driverName').value.trim();
-    const car = document.getElementById('driverCar').value.trim();
-    const team = document.getElementById('driverTeam').value.trim();
-    if(!name){ alert('Enter driver name'); return; }
-    const newRef = driversRef.push();
-    newRef.set({ name, car, team, createdAt: Date.now() });
-    document.getElementById('driverName').value = '';
-    document.getElementById('driverCar').value = '';
-    document.getElementById('driverTeam').value = '';
-  });
+  document.getElementById("addDriverBtn").onclick = () => {
+    const name = document.getElementById("driverName").value.trim();
+    const car = document.getElementById("driverCar").value.trim();
+    const team = document.getElementById("driverTeam").value.trim();
 
-  document.getElementById('exportBtn').addEventListener('click', ()=>{
-    driversRef.once('value').then(snap=>{
-      const data = snap.val() || {};
-      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'drivers.json'; a.click();
-      URL.revokeObjectURL(url);
+    if (!name || !car || !team) {
+      alert("Fill all driver fields.");
+      return;
+    }
+
+    driversRef.push({
+      name,
+      car,
+      team,
+      createdAt: Date.now()
     });
-  });
 
-  document.getElementById('clearDriversBtn').addEventListener('click', ()=>{
-    if(confirm('Remove ALL drivers?')) driversRef.set(null);
-  });
+    document.getElementById("driverName").value = "";
+    document.getElementById("driverCar").value = "";
+    document.getElementById("driverTeam").value = "";
+  };
 
-  // Logout buttons
-  const logoutBtns = document.querySelectorAll('#logoutBtn');
-  logoutBtns.forEach(b=> b.addEventListener('click', ()=>{
-    sessionStorage.removeItem('race_role');
-    window.location.href = '/login.html';
-  }));
-} else {
-  // Viewer logout
-  const vLogout = document.getElementById('logoutBtn');
-  if(vLogout){
-    vLogout.addEventListener('click', ()=>{
-      sessionStorage.removeItem('race_role');
-      window.location.href = '/login.html';
-    });
-  }
-}
-
-// Helper
-function escapeHtml(s){
-  return String(s || '').replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
-}
-// Clear ALL drivers
-const clearDriversBtn = document.getElementById("clearDriversBtn");
-if (clearDriversBtn) {
-  clearDriversBtn.addEventListener("click", () => {
+  // Clear all drivers
+  document.getElementById("clearDriversBtn").onclick = () => {
     if (confirm("Delete ALL drivers?")) {
       driversRef.remove();
     }
-  });
+  };
 }
 
-/* ============================================================
-   LOGOUT
-============================================================ */
 
-const logoutBtn = document.getElementById("logoutBtn");
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", () => {
-    sessionStorage.clear();
-    window.location.href = "login.html";
-  });
-}
+// ============================================================
+//  UNIVERSAL LOGOUT (Admin + Viewer)
+// ============================================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.onclick = () => {
+      sessionStorage.removeItem("race_role");
+      window.location.href = "login.html";
+    };
+  }
+});
+
