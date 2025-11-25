@@ -191,7 +191,7 @@ document.getElementById("startBtn").onclick = () => {
 };
 
   // Stop
-  document.getElementById("stopBtn").onclick = () => {
+ /* document.getElementById("stopBtn").onclick = () => {
     timerRef.once("value").then(snap => {
       const data = snap.val();
       if (!data) return;
@@ -205,7 +205,28 @@ document.getElementById("startBtn").onclick = () => {
         elapsed: newElapsed
       });
     });
-  };
+  };*/
+document.getElementById("stopBtn").onclick = () => {
+  timerRef.once("value").then(snap => {
+    const data = snap.val();
+    if (!data) return;
+
+    // Prevent garbage values on repeated STOP presses
+    if (!data.running) {
+      console.warn("Timer already stopped — ignoring extra STOP press");
+      return;
+    }
+
+    const stopTime = Date.now();
+    const newElapsed = data.elapsed + (stopTime - data.startTime);
+
+    timerRef.set({
+      running: false,
+      startTime: 0,
+      elapsed: newElapsed
+    });
+  });
+};
 
   // Reset
   document.getElementById("resetBtn").onclick = () => {
