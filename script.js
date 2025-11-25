@@ -153,7 +153,7 @@ function isAdminUI() {
 if (isAdminUI()) {
 
   // Start (with countdown)
-  document.getElementById("startBtn").onclick = () => {
+  /*document.getElementById("startBtn").onclick = () => {
     let countdown = 5;
     timerDisplay.innerText = `Starting in ${countdown}...`;
 
@@ -175,7 +175,20 @@ if (isAdminUI()) {
         });
       }
     }, 1000);
-  };
+  };*/
+// Start instantly (NO countdown)
+document.getElementById("startBtn").onclick = () => {
+
+  timerRef.once("value").then(snap => {
+    const data = snap.val() || { elapsed: 0 };
+
+    timerRef.set({
+      running: true,
+      startTime: firebase.database.ServerValue.TIMESTAMP,
+      elapsed: data.elapsed
+    });
+  });
+};
 
   // Stop
   document.getElementById("stopBtn").onclick = () => {
