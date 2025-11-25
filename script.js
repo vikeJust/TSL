@@ -27,7 +27,7 @@ function formatMS(ms) {
   return (
     String(m).padStart(2, "0") + ":" +
     String(s).padStart(2, "0") + ":" +
-    String(msPart).padStart(3, "0")
+    String(msPart).padStart(2, "0")
   );
 }
 
@@ -58,7 +58,7 @@ timerRef.on(
           const diff = data.elapsed + (serverNow - data.startTime);
           if (timerDisplay) timerDisplay.innerText = formatMS(diff);
         });
-      }, 20);
+      }, 1);
     } else {
       if (localInterval) {
         clearInterval(localInterval);
